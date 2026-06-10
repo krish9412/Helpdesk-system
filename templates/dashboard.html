@@ -1,94 +1,241 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Helpdesk Dashboard</title>
+    <title>Enterprise Helpdesk System</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
 </head>
 
 <body class="bg-light">
 
 <div class="container mt-4">
 
-    <h2>Dashboard</h2>
+    <h2>Enterprise Helpdesk Dashboard</h2>
 
-    <p>Welcome <b>{{ user.username }}</b> ({{ user.role }})</p>
+    <p>
+        Welcome <b>{{ user.username }}</b>
+        ({{ user.role }})
+    </p>
 
-    <a class="btn btn-primary btn-sm" href="/create-ticket">➕ Create Ticket</a>
-    <a class="btn btn-danger btn-sm" href="/logout">Logout</a>
+    <a class="btn btn-primary" href="/create-ticket">
+        ➕ Create Ticket
+    </a>
+
+    <a class="btn btn-danger" href="/logout">
+        Logout
+    </a>
 
     <hr>
 
-    <!-- STATS -->
-    <div class="row mb-3">
+    <!-- STAT CARDS -->
 
-        <div class="col">
-            <div class="card p-2 text-center">Open: {{ stats.open }}</div>
+    <div class="row mb-4">
+
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Open</h5>
+                    <h3>{{ stats.open }}</h3>
+                </div>
+            </div>
         </div>
 
-        <div class="col">
-            <div class="card p-2 text-center">In Progress: {{ stats.progress }}</div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>In Progress</h5>
+                    <h3>{{ stats.progress }}</h3>
+                </div>
+            </div>
         </div>
 
-        <div class="col">
-            <div class="card p-2 text-center">Resolved: {{ stats.resolved }}</div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Resolved</h5>
+                    <h3>{{ stats.resolved }}</h3>
+                </div>
+            </div>
         </div>
 
-        <div class="col">
-            <div class="card p-2 text-center">Closed: {{ stats.closed }}</div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Closed</h5>
+                    <h3>{{ stats.closed }}</h3>
+                </div>
+            </div>
         </div>
 
     </div>
 
     <!-- SEARCH -->
-    <form method="GET" class="mb-3">
-        <input type="text" name="search" class="form-control" placeholder="Search tickets..." value="{{ search or '' }}">
+
+    <form method="GET" class="mb-4">
+
+        <input
+            type="text"
+            name="search"
+            class="form-control"
+            placeholder="Search tickets..."
+            value="{{ search or '' }}"
+        >
+
     </form>
 
-    <h4>Tickets</h4>
+    <h3>Incident Tickets</h3>
 
     {% for t in tickets %}
 
-    <div class="card p-3 mb-3">
+    <div class="card shadow-sm mb-4">
 
-        <h5>{{ t.title }}</h5>
-        <p>{{ t.description }}</p>
+        <div class="card-body">
 
-        <p>
-            <b>Priority:</b> {{ t.priority }}
-        </p>
+            <!-- INCIDENT ID -->
 
-        <p>
-            <b>Status:</b> {{ t.status }}
-        </p>
+            <h5 class="text-primary">
+                INC{{ "%04d"|format(t.id) }}
+            </h5>
 
-        <p>
-            <b>Assigned To:</b>
-            {% if t.assigned_to %}
-                {{ user_map[t.assigned_to] }}
-            {% else %}
-                Not Assigned
+            <!-- TITLE -->
+
+            <h4>
+                {{ t.title }}
+            </h4>
+
+            <!-- DESCRIPTION -->
+
+            <p>
+                {{ t.description }}
+            </p>
+
+            <!-- CATEGORY -->
+
+            <p>
+                <strong>Category:</strong>
+                {{ t.category }}
+            </p>
+
+            <!-- DATE -->
+
+            <p>
+                <strong>Created:</strong>
+                {{ t.created_at.strftime('%d %b %Y') }}
+            </p>
+
+            <!-- PRIORITY -->
+
+            <p>
+                <strong>Priority:</strong>
+
+                {% if t.priority == "Critical" %}
+                    <span class="badge bg-danger">Critical</span>
+
+                {% elif t.priority == "High" %}
+                    <span class="badge bg-warning text-dark">High</span>
+
+                {% elif t.priority == "Medium" %}
+                    <span class="badge bg-info text-dark">Medium</span>
+
+                {% else %}
+                    <span class="badge bg-success">Low</span>
+
+                {% endif %}
+            </p>
+
+            <!-- STATUS -->
+
+            <p>
+                <strong>Status:</strong>
+
+                {% if t.status == "Open" %}
+                    <span class="badge bg-success">
+                        Open
+                    </span>
+
+                {% elif t.status == "In Progress" %}
+                    <span class="badge bg-warning text-dark">
+                        In Progress
+                    </span>
+
+                {% elif t.status == "Resolved" %}
+                    <span class="badge bg-primary">
+                        Resolved
+                    </span>
+
+                {% else %}
+                    <span class="badge bg-dark">
+                        Closed
+                    </span>
+
+                {% endif %}
+            </p>
+
+            <!-- ASSIGNED USER -->
+
+            <p>
+
+                <strong>Assigned To:</strong>
+
+                {% if t.assigned_to %}
+                    {{ user_map[t.assigned_to] }}
+                {% else %}
+                    Not Assigned
+                {% endif %}
+
+            </p>
+
+            <!-- STATUS ACTIONS -->
+
+            <div class="mb-3">
+
+                <strong>Status Actions:</strong><br>
+
+                <a class="btn btn-sm btn-outline-success"
+                   href="/update-status/{{ t.id }}/Open">
+                    Open
+                </a>
+
+                <a class="btn btn-sm btn-outline-warning"
+                   href="/update-status/{{ t.id }}/In%20Progress">
+                    In Progress
+                </a>
+
+                <a class="btn btn-sm btn-outline-primary"
+                   href="/update-status/{{ t.id }}/Resolved">
+                    Resolved
+                </a>
+
+                <a class="btn btn-sm btn-outline-dark"
+                   href="/update-status/{{ t.id }}/Closed">
+                    Closed
+                </a>
+
+            </div>
+
+            <!-- ASSIGN TICKET -->
+
+            {% if user.role == "admin" %}
+
+            <div>
+
+                <strong>Assign Ticket:</strong><br>
+
+                {% for u in users %}
+
+                    <a class="btn btn-sm btn-secondary mt-1"
+                       href="/assign/{{ t.id }}/{{ u.id }}">
+                        Assign to {{ u.username }}
+                    </a>
+
+                {% endfor %}
+
+            </div>
+
             {% endif %}
-        </p>
 
-        <p>
-            <b>Actions:</b><br>
-            <a href="/update-status/{{ t.id }}/Open">Open</a> |
-            <a href="/update-status/{{ t.id }}/In%20Progress">In Progress</a> |
-            <a href="/update-status/{{ t.id }}/Resolved">Resolved</a> |
-            <a href="/update-status/{{ t.id }}/Closed">Closed</a>
-        </p>
-
-        {% if user.role == "admin" %}
-
-            <p><b>Assign:</b></p>
-
-            {% for u in users %}
-                <a href="/assign/{{ t.id }}/{{ u.id }}">
-                    ➜ {{ u.username }}
-                </a><br>
-            {% endfor %}
-
-        {% endif %}
+        </div>
 
     </div>
 

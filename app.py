@@ -1,5 +1,6 @@
-from flask import Flask, render_template, redirect, request, url_for
+from flask import Flask, render_template, redirect, request, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from datetime import datetime
 
 from models import db, User, Ticket
 
@@ -10,6 +11,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///helpdesk.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+
 
 # ---------------- LOGIN ----------------
 login_manager = LoginManager()
@@ -31,6 +33,7 @@ def home():
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
     if request.method == "POST":
 
         user = User.query.filter_by(
@@ -42,12 +45,12 @@ def login():
             login_user(user)
             return redirect(url_for("dashboard"))
 
-        return "Invalid Credentials"
+        flash("Invalid credentials", "danger")
 
     return render_template("login.html")
 
 
-# ---------------- DASHBOARD (FINAL UPGRADE) ----------------
+# ---------------- DASHBOARD (PHASE 4 UPGRADE) ----------------
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -61,16 +64,14 @@ def dashboard():
         tickets_query = Ticket.query.filter_by(created_by=current_user.id)
         users = []
 
-    # SEARCH FEATURE
     if search:
         tickets_query = tickets_query.filter(Ticket.title.contains(search))
 
-    tickets = tickets_query.all()
+    tickets = tickets_query.order_by(Ticket.id.desc()).all()
 
-    # USER MAP (IMPORTANT FIX)
     user_map = {u.id: u.username for u in User.query.all()}
 
-    # STATS (FINAL BOSS FEATURE)
+    # ---------------- STATS ----------------
     stats = {
         "open": Ticket.query.filter_by(status="Open").count(),
         "progress": Ticket.query.filter_by(status="In Progress").count(),
@@ -85,7 +86,7 @@ def dashboard():
         users=users,
         user_map=user_map,
         stats=stats,
-        search=search
+        datetime=datetime   # IMPORTANT for SLA
     )
 
 
@@ -99,6 +100,7 @@ def create_ticket():
         ticket = Ticket(
             title=request.form.get("title"),
             description=request.form.get("description"),
+            category=request.form.get("category"),
             priority=request.form.get("priority"),
             status="Open",
             created_by=current_user.id
@@ -106,6 +108,11 @@ def create_ticket():
 
         db.session.add(ticket)
         db.session.commit()
+
+        ticket.ticket_code = f"INC{ticket.id:04d}"
+        db.session.commit()
+
+        flash(f"{ticket.ticket_code} created successfully", "success")
 
         return redirect(url_for("dashboard"))
 
@@ -119,20 +126,20 @@ def update_status(ticket_id, status):
 
     ticket = Ticket.query.get(ticket_id)
 
-    if not ticket:
-        return "Not found"
-
     allowed = ["Open", "In Progress", "Resolved", "Closed"]
 
-    if status not in allowed:
-        return "Invalid status"
+    if not ticket or status not in allowed:
+        flash("Invalid request", "danger")
+        return redirect(url_for("dashboard"))
 
     if current_user.role != "admin" and ticket.created_by != current_user.id:
-        return "Not allowed"
+        flash("Not allowed", "danger")
+        return redirect(url_for("dashboard"))
 
     ticket.status = status
     db.session.commit()
 
+    flash("Status updated", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -142,16 +149,16 @@ def update_status(ticket_id, status):
 def assign(ticket_id, user_id):
 
     if current_user.role != "admin":
-        return "Only admin"
+        flash("Only admin can assign", "danger")
+        return redirect(url_for("dashboard"))
 
     ticket = Ticket.query.get(ticket_id)
     user = User.query.get(user_id)
 
-    if not ticket or not user:
-        return "Invalid"
-
-    ticket.assigned_to = user_id
-    db.session.commit()
+    if ticket and user:
+        ticket.assigned_to = user_id
+        db.session.commit()
+        flash("Assigned successfully", "success")
 
     return redirect(url_for("dashboard"))
 
@@ -164,18 +171,20 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ---------------- RUN ----------------
+# ---------------- INIT DB ----------------
 if __name__ == "__main__":
 
     with app.app_context():
         db.create_all()
 
         if not User.query.filter_by(username="admin").first():
+
             db.session.add_all([
                 User(username="admin", password="admin123", role="admin"),
                 User(username="tech", password="tech123", role="technician"),
                 User(username="employee", password="employee123", role="employee"),
             ])
+
             db.session.commit()
 
     app.run(debug=True)
