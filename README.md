@@ -1,4 +1,4 @@
-# Helpdesk Ticketing System 🚀
+# Helpdesk Ticketing System 
 
 A full-stack Flask-based IT Helpdesk system.
 
